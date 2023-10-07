@@ -1,2 +1,2 @@
 # Zadania_Pad
-RealizacjaZadańZPad
+Realizacja Zadań Z Pad
