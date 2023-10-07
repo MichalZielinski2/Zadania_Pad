@@ -1,0 +1,2 @@
+# Zadania_Pad
+RealizacjaZadańZPad
