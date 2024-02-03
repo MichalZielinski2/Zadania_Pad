@@ -27,11 +27,12 @@ stones['table'].fillna(stones['table'].mean(), inplace = True)
 
 #Usuwam kolumny z zbyt dużą ilością NAN
 stones.drop(columns=['y dimension','depth'], inplace=True)
-#'z dimension' nie bardzo dużo NAN ale jest mocno skorelowane z carat więc uzanłem że warto usunąć.
+#'z dimension' i 'x dimension' nie bardzo dużo NAN ale jest mocno skorelowane z carat, więc warto usunąć.
 stones.drop(columns='z dimension', inplace=True)
+stones.drop(columns='x dimension', inplace=True)
 
 #Usuwam wiersze z NAN w przypadku kolumn gdzie NAN jest nieczęste
-stones.dropna(subset=['x dimension','price'], axis='index', inplace=True)
+stones.dropna(subset=['price'], axis='index', inplace=True)
 
 #Usuwam wartości odstające
 stones[stones['carat']>5] = stones['carat'].mean()
@@ -81,7 +82,7 @@ st.plotly_chart(fig)
 
 #Histogramy
 st.subheader("Histogram")
-Selected = st.selectbox("Wybierz atrybut do histogramu",('carat','clarity','color','cut','x dimension','table','price') )
+Selected = st.selectbox("Wybierz atrybut do histogramu",('carat','clarity','color','cut','table','price') )
 
 stones_coppy = stones_categorical
 fig = px.histogram(stones_categorical,x=Selected)
@@ -89,7 +90,7 @@ st.plotly_chart(fig)
 
 #Wykresy pudełkowe
 st.subheader("Wykresy pudełkowe")
-Selected = st.multiselect("Wybierz atrybut do wykresu pudełkowego",('table','price','x dimension','carat') )
+Selected = st.multiselect("Wybierz atrybut do wykresu pudełkowego",('table','price','carat') )
 
 fig = sp.make_subplots(rows=1, cols=len(Selected), shared_xaxes=True)
 for i, column in enumerate(Selected):
@@ -102,16 +103,16 @@ st.plotly_chart(fig)
 st.subheader("Wykresy zaleczności")
 col1, col2 = st.columns(2)
 with col1:
-    Selected_x = st.selectbox("Wybierz oś x wykresu",('carat','clarity','color','cut','x dimension','table','price') )
+    Selected_x = st.selectbox("Wybierz oś x wykresu",('carat','clarity','color','cut','table','price') )
 with col2:
-    Selected_y = st.selectbox("Wybierz oś y wykresu",('carat','clarity','color','cut','x dimension','table','price') )
+    Selected_y = st.selectbox("Wybierz oś y wykresu",('carat','clarity','color','cut','table','price') )
 
 fig = px.scatter(stones_categorical,x=Selected_x,y=Selected_y,color='price')
 st.plotly_chart(fig)
 
 #macierz korelacji
 st.subheader("Macierz korelacji")
-Selected = st.multiselect("Wybierz atrybuty do macierzy korelacji",('carat','clarity','color','cut','x dimension','table','price') )
+Selected = st.multiselect("Wybierz atrybuty do macierzy korelacji",('carat','clarity','color','cut','table','price') )
 correlation_matrix = stones[Selected].corr()
 
 fig = px.imshow(
@@ -129,7 +130,7 @@ st.title("Wizualizacja Modelu")
 X_train, X_test, Y_train, Y_test = train_test_split(stones.drop(columns=['price']),stones['price'],test_size=0.33)
 LR = LinearRegression()
 scores = []
-for i in range(1,6):
+for i in range(1,5):
     SFS = SequentialFeatureSelector(LR, n_features_to_select=i, scoring='r2')
     SFS = SFS.fit(X_train,Y_train)
     selected_feature_indices = SFS.get_support()
@@ -139,7 +140,7 @@ for i in range(1,6):
     scores.append(score)
 
 no_atributes = st.slider('wybierz Ilość atrybutów',min_value=1,max_value=5)
-fig = px.scatter(x=range(1,6) , y=scores,title='Model',labels={'x':'Number of selected features','y':'R2 score'})
+fig = px.scatter(x=range(1,5) , y=scores,title='Model',labels={'x':'Number of selected features','y':'R2 score'})
 fig.add_vline(x=no_atributes, line_dash="dash", line_color="green")
 fig.update_layout(showlegend=False)
 st.subheader("Model zalerzność R2 od ilości wybranych atrybutów")
@@ -177,3 +178,23 @@ with st.spinner("Trenowanie modelu"):
 
     st.subheader("współczynnik nacheylenia")
     st.plotly_chart(px.bar(x = X_test.columns[selected_feature_indices2], y = model.coef_,title="selected indices and coefficience", labels={'x':'','y':'price coefficience'}))
+
+    st.subheader("współczynnik nacheylenia na wykresie")
+    selected_columns = X_test.columns[selected_feature_indices2]
+    Selected_Parameters_coefisience = st.selectbox("Wybierz atrybut do wykresu",X_test.columns[selected_feature_indices2])
+    index = np.where(X_test.columns[selected_feature_indices2] == Selected_Parameters_coefisience)[0][0]
+
+    stones_predicted['line'] = stones_predicted[Selected_Parameters_coefisience] * model.coef_[index] + model.intercept_
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x = stones_predicted[Selected_Parameters_coefisience],y=stones_predicted['price'],mode='markers', name='real'))
+    fig.add_trace(go.Scatter(x = stones_predicted[Selected_Parameters_coefisience],y=stones_predicted['line'], name='regresion line'))
+
+    fig.update_layout(
+        xaxis_title=Selected_atribute,
+        yaxis_title="price",)
+    st.plotly_chart(fig)
+
+
+    
+
+
